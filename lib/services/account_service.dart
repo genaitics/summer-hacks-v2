@@ -1,55 +1,104 @@
-import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:student_fin_os/core/utils/firestore_codec.dart';
+import 'package:flutter/foundation.dart';
 import 'package:student_fin_os/models/account.dart';
+import 'package:student_fin_os/services/in_memory_db.dart';
+import 'package:student_fin_os/services/lambda_api_service.dart';
 
 class AccountService {
-  AccountService(this._firestore);
+  AccountService(this._apiService);
 
-  final FirebaseFirestore _firestore;
+  final LambdaApiService _apiService;
 
-  CollectionReference<Map<String, dynamic>> _accountsCollection(String userId) {
-    return _firestore.collection('users').doc(userId).collection('accounts');
-  }
+  Stream<List<Account>> watchAccounts(String userId) async* {
+    if (!_apiService.isConfigured) {
+      yield InMemoryDb.accounts.where((Account a) => a.isActive).toList();
+      return;
+    }
 
-  Stream<List<Account>> watchAccounts(String userId) {
-    return _accountsCollection(userId)
-        .where('isActive', isEqualTo: true)
-        .orderBy('createdAt', descending: false)
-        .snapshots()
-        .map((QuerySnapshot<Map<String, dynamic>> snapshot) {
-      return snapshot.docs
-          .map((QueryDocumentSnapshot<Map<String, dynamic>> doc) {
-            return Account.fromMap(doc.id, doc.data());
-          })
-          .toList();
-    });
+    try {
+      final dynamic response = await _apiService.get('/accounts?userId=$userId');
+      if (response is List) {
+        final List<Account> accounts = response
+            .map((dynamic e) => Account.fromMap(e['id'] ?? e['accountId'] ?? '', e as Map<String, dynamic>))
+            .toList();
+        yield accounts;
+      } else {
+        yield InMemoryDb.accounts.where((Account a) => a.isActive).toList();
+      }
+    } catch (e) {
+      debugPrint('[AccountService] API watchAccounts error: $e');
+      yield InMemoryDb.accounts.where((Account a) => a.isActive).toList();
+    }
   }
 
   Future<void> upsertAccount(Account account) async {
-    await _accountsCollection(account.userId)
-        .doc(account.id)
-        .set(account.toMap(), SetOptions(merge: true));
+    final int idx = InMemoryDb.accounts.indexWhere((Account a) => a.id == account.id);
+    if (idx != -1) {
+      InMemoryDb.accounts[idx] = account;
+    } else {
+      InMemoryDb.accounts.add(account);
+    }
+
+    if (_apiService.isConfigured) {
+      try {
+        await _apiService.post('/accounts', account.toMap());
+      } catch (e) {
+        debugPrint('[AccountService] API upsertAccount error: $e');
+      }
+    }
   }
 
   Future<void> archiveAccount({
     required String userId,
     required String accountId,
   }) async {
-    await _accountsCollection(userId).doc(accountId).update(<String, dynamic>{
-      'isActive': false,
-      'updatedAt': FirestoreCodec.writeDateTime(DateTime.now().toUtc()),
-    });
+    final int idx = InMemoryDb.accounts.indexWhere((Account a) => a.id == accountId);
+    if (idx != -1) {
+      final Account account = InMemoryDb.accounts[idx];
+      InMemoryDb.accounts[idx] = Account(
+        id: account.id,
+        userId: account.userId,
+        name: account.name,
+        type: account.type,
+        provider: account.provider,
+        balance: account.balance,
+        isActive: false,
+        icon: account.icon,
+        transactionIds: account.transactionIds,
+        createdAt: account.createdAt,
+        updatedAt: DateTime.now().toUtc(),
+      );
+    }
+
+    if (_apiService.isConfigured) {
+      try {
+        await _apiService.post('/accounts/archive', <String, dynamic>{
+          'userId': userId,
+          'accountId': accountId,
+        });
+      } catch (e) {
+        debugPrint('[AccountService] API archiveAccount error: $e');
+      }
+    }
   }
 
   Future<double> getUnifiedBalance(String userId) async {
-    final QuerySnapshot<Map<String, dynamic>> snapshot =
-        await _accountsCollection(userId).where('isActive', isEqualTo: true).get();
-    double total = 0;
-
-    for (final QueryDocumentSnapshot<Map<String, dynamic>> doc in snapshot.docs) {
-      total += (doc.data()['balance'] as num?)?.toDouble() ?? 0;
+    if (!_apiService.isConfigured) {
+      return InMemoryDb.accounts
+          .where((Account a) => a.isActive)
+          .fold<double>(0.0, (double sum, Account a) => sum + a.balance);
     }
 
-    return total;
+    try {
+      final dynamic response = await _apiService.get('/accounts/unified-balance?userId=$userId');
+      if (response is Map<String, dynamic>) {
+        return (response['balance'] as num?)?.toDouble() ?? 0.0;
+      }
+      return 0.0;
+    } catch (e) {
+      debugPrint('[AccountService] API getUnifiedBalance error: $e');
+      return InMemoryDb.accounts
+          .where((Account a) => a.isActive)
+          .fold<double>(0.0, (double sum, Account a) => sum + a.balance);
+    }
   }
 }

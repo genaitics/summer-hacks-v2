@@ -1,34 +1,67 @@
-import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:flutter/foundation.dart';
 import 'package:student_fin_os/models/finance_enums.dart';
 import 'package:student_fin_os/models/savings_goal.dart';
+import 'package:student_fin_os/services/in_memory_db.dart';
+import 'package:student_fin_os/services/lambda_api_service.dart';
 
 class SavingsService {
-  SavingsService(this._firestore);
+  SavingsService(this._apiService);
 
-  final FirebaseFirestore _firestore;
+  final LambdaApiService _apiService;
 
-  CollectionReference<Map<String, dynamic>> _goals(String userId) {
-    return _firestore.collection('users').doc(userId).collection('savings_goals');
-  }
+  Stream<List<SavingsGoal>> watchGoals(String userId) async* {
+    if (!_apiService.isConfigured) {
+      final List<SavingsGoal> list = InMemoryDb.goals
+          .where((SavingsGoal g) => g.userId == userId)
+          .toList()
+        ..sort((SavingsGoal a, SavingsGoal b) {
+          final int p = a.priority.compareTo(b.priority);
+          if (p != 0) return p;
+          return a.deadline.compareTo(b.deadline);
+        });
+      yield list;
+      return;
+    }
 
-  Stream<List<SavingsGoal>> watchGoals(String userId) {
-    return _goals(userId)
-        .orderBy('priority', descending: false)
-        .orderBy('deadline', descending: false)
-        .snapshots()
-        .map((QuerySnapshot<Map<String, dynamic>> snapshot) {
-      return snapshot.docs
-          .map((QueryDocumentSnapshot<Map<String, dynamic>> doc) {
-            return SavingsGoal.fromMap(doc.id, doc.data());
-          })
-          .toList();
-    });
+    try {
+      final dynamic response = await _apiService.get('/goals?userId=$userId');
+      if (response is List) {
+        final List<SavingsGoal> list = response
+            .map((dynamic e) => SavingsGoal.fromMap(e['id'] ?? e['goalId'] ?? '', e as Map<String, dynamic>))
+            .toList();
+        yield list;
+      } else {
+        yield <SavingsGoal>[];
+      }
+    } catch (e) {
+      debugPrint('[SavingsService] API watchGoals error: $e');
+      final List<SavingsGoal> list = InMemoryDb.goals
+          .where((SavingsGoal g) => g.userId == userId)
+          .toList()
+        ..sort((SavingsGoal a, SavingsGoal b) {
+          final int p = a.priority.compareTo(b.priority);
+          if (p != 0) return p;
+          return a.deadline.compareTo(b.deadline);
+        });
+      yield list;
+    }
   }
 
   Future<void> upsertGoal(SavingsGoal goal) async {
-    await _goals(goal.userId)
-        .doc(goal.id)
-        .set(goal.toMap(), SetOptions(merge: true));
+    final int idx = InMemoryDb.goals.indexWhere((SavingsGoal g) => g.id == goal.id);
+    if (idx != -1) {
+      InMemoryDb.goals[idx] = goal;
+    } else {
+      InMemoryDb.goals.add(goal);
+    }
+
+    if (_apiService.isConfigured) {
+      try {
+        await _apiService.post('/goals', goal.toMap());
+      } catch (e) {
+        debugPrint('[SavingsService] API upsertGoal error: $e');
+      }
+    }
   }
 
   Future<void> contributeToGoal({
@@ -36,28 +69,38 @@ class SavingsService {
     required String goalId,
     required double amount,
   }) async {
-    final DocumentReference<Map<String, dynamic>> goalRef =
-        _goals(userId).doc(goalId);
-
-    await _firestore.runTransaction((Transaction tx) async {
-      final DocumentSnapshot<Map<String, dynamic>> snapshot =
-          await tx.get(goalRef);
-      if (!snapshot.exists) {
-        throw StateError('Savings goal not found.');
-      }
-
-      final SavingsGoal goal = SavingsGoal.fromMap(goalId, snapshot.data()!);
+    final int idx = InMemoryDb.goals.indexWhere((SavingsGoal g) => g.id == goalId);
+    if (idx != -1) {
+      final SavingsGoal goal = InMemoryDb.goals[idx];
       final double updatedSavedAmount = goal.savedAmount + amount;
       final GoalStatus status = updatedSavedAmount >= goal.targetAmount
           ? GoalStatus.achieved
           : GoalStatus.active;
+      InMemoryDb.goals[idx] = SavingsGoal(
+        id: goal.id,
+        userId: goal.userId,
+        title: goal.title,
+        targetAmount: goal.targetAmount,
+        savedAmount: updatedSavedAmount,
+        deadline: goal.deadline,
+        priority: goal.priority,
+        status: status,
+        createdAt: goal.createdAt,
+        updatedAt: DateTime.now().toUtc(),
+      );
+    }
 
-      tx.update(goalRef, <String, dynamic>{
-        'savedAmount': updatedSavedAmount,
-        'status': status.name,
-        'updatedAt': FieldValue.serverTimestamp(),
-      });
-    });
+    if (_apiService.isConfigured) {
+      try {
+        await _apiService.post('/goals/contribute', <String, dynamic>{
+          'userId': userId,
+          'goalId': goalId,
+          'amount': amount,
+        });
+      } catch (e) {
+        debugPrint('[SavingsService] API contributeToGoal error: $e');
+      }
+    }
   }
 
   double recommendedMonthlyContribution(SavingsGoal goal) {

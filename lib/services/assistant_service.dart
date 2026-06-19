@@ -1,10 +1,12 @@
 import 'dart:async';
 import 'dart:convert';
-import 'dart:typed_data';
 
+import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 import 'package:student_fin_os/core/config/ai_runtime_config.dart';
 import 'package:student_fin_os/models/assistant_models.dart';
+import 'package:student_fin_os/models/avatar_mood.dart';
+import 'package:student_fin_os/models/wealth_advisory_reply.dart';
 import 'package:web_socket_channel/web_socket_channel.dart';
 
 class AssistantService {
@@ -103,12 +105,17 @@ class AssistantService {
         attempts: 3,
       );
 
+      final WealthAdvisoryReply parsed = _parseWealthAdvisoryReply(reply);
+
       return AssistantReply(
-        reply: _normalizeAssistantReply(reply),
+        reply: parsed.summary,
         modelUsed: modelUsed,
         fallbackUsed: fallbackUsed,
         generatedAt: DateTime.now().toUtc(),
-        suggestions: _buildSuggestedPrompts(prompt),
+        suggestions: parsed.recommendations.isNotEmpty
+            ? parsed.recommendations
+            : _buildSuggestedPrompts(prompt),
+        wealthAdvisorData: parsed,
       );
     } catch (_) {
       if (responseMode != AssistantResponseMode.deep) {
@@ -129,12 +136,17 @@ class AssistantService {
       attempts: 3,
     );
 
+    final WealthAdvisoryReply parsedFallback = _parseWealthAdvisoryReply(fallbackReply);
+
     return AssistantReply(
-      reply: _normalizeAssistantReply(fallbackReply),
+      reply: parsedFallback.summary,
       modelUsed: modelUsed,
       fallbackUsed: fallbackUsed,
       generatedAt: DateTime.now().toUtc(),
-      suggestions: _buildSuggestedPrompts(prompt),
+      suggestions: parsedFallback.recommendations.isNotEmpty
+          ? parsedFallback.recommendations
+          : _buildSuggestedPrompts(prompt),
+      wealthAdvisorData: parsedFallback,
     );
   }
 
@@ -178,7 +190,7 @@ class AssistantService {
           systemPrompt: systemPrompt,
           history: allMessages,
           temperature: 0.3,
-          maxOutputTokens: 260,
+          maxOutputTokens: 400,
           attempts: 1,
           requestTimeout: const Duration(seconds: 14),
         );
@@ -193,14 +205,15 @@ class AssistantService {
       throw lastError ?? StateError('Voice turn request failed.');
     }
 
-    final String normalizedReply = _normalizeAssistantReply(reply);
+    final WealthAdvisoryReply parsed = _parseWealthAdvisoryReply(reply);
 
     return VoiceAssistantReply(
-      reply: normalizedReply,
+      reply: parsed.summary,
       modelUsed: modelUsed,
       fallbackUsed: fallbackUsed,
       generatedAt: DateTime.now().toUtc(),
-      speechChunks: _splitSpeechChunks(normalizedReply),
+      speechChunks: _splitSpeechChunks(parsed.spokenLine),
+      wealthAdvisorData: parsed,
     );
   }
 
@@ -377,17 +390,82 @@ class AssistantService {
   String _buildSystemPrompt(Map<String, dynamic> clientContext) {
     final String contextJson = jsonEncode(clientContext);
     return <String>[
-      'You are FinMate, a personal finance assistant for Indian college students.',
-      'Focus on spending summaries, budgets, savings goals, transaction explanations, and split expenses.',
-      'Use only the supplied user context. Never infer data from outside this context.',
-      'Keep responses practical, concise, and actionable. Mention assumptions clearly.',
-      'Response style: max 4 lines, no long paragraphs, no filler.',
-      'Never claim to execute real banking operations.',
+      'You are FinMate, a personal wealth advisor for an Indian mobile banking app.',
+      'Provide your response in JSON format matching this EXACT schema:',
+      '{',
+      '  "summary": "Clear, concise markdown summary of the financial situation/answer. Limit to 3-4 sentences.",',
+      '  "mood": "idle | thinking | speaking",',
+      '  "healthScore": 74, // integer score 0-100 reflecting current status',
+      '  "spokenLine": "One short, punchy sentence to be spoken by Text-To-Speech.",',
+      '  "recommendations": ["Recommendation 1", "Recommendation 2"],',
+      '  "actions": ["Action item 1", "Action item 2"]',
+      '}',
+      'Important constraints:',
+      '- Always respond with valid JSON. Do not include markdown code block styling like ```json ... ```, just return the raw JSON object string.',
+      '- Provide amounts in INR (₹) Indian context.',
+      '- Use only the supplied user context. Never infer data from outside this context.',
+      '- Keep responses practical, concise, and actionable.',
+      '- Never claim to execute real banking operations.',
       'USER_CONTEXT_JSON:',
       contextJson.length > 12000
           ? contextJson.substring(0, 12000)
           : contextJson,
     ].join('\n');
+  }
+
+  String cleanJsonString(String response) {
+    String clean = response.trim();
+    if (clean.startsWith('```')) {
+      final int firstNewLine = clean.indexOf('\n');
+      if (firstNewLine != -1) {
+        clean = clean.substring(firstNewLine + 1);
+      }
+      if (clean.endsWith('```')) {
+        clean = clean.substring(0, clean.length - 3);
+      }
+      clean = clean.trim();
+    }
+    return clean;
+  }
+
+  WealthAdvisoryReply _parseWealthAdvisoryReply(String rawText) {
+    try {
+      final String clean = cleanJsonString(rawText);
+      final dynamic decoded = jsonDecode(clean);
+      if (decoded is Map<String, dynamic>) {
+        final String summary = decoded['summary'] ?? decoded['spokenLine'] ?? 'I cannot analyze that right now.';
+        final String moodStr = decoded['mood'] ?? 'idle';
+        final AvatarMood mood = AvatarMood.values.firstWhere(
+          (AvatarMood m) => m.name == moodStr,
+          orElse: () => AvatarMood.idle,
+        );
+        final int healthScore = decoded['healthScore'] ?? 70;
+        final String spokenLine = decoded['spokenLine'] ?? summary;
+        final List<String> recommendations = List<String>.from(decoded['recommendations'] ?? const <String>[]);
+        final List<String> actions = List<String>.from(decoded['actions'] ?? const <String>[]);
+
+        return WealthAdvisoryReply(
+          summary: summary,
+          mood: mood,
+          healthScore: healthScore,
+          spokenLine: spokenLine,
+          recommendations: recommendations,
+          actions: actions,
+        );
+      }
+    } catch (e) {
+      debugPrint('[AssistantService] Failed to parse JSON reply from Gemini: $e. Content: $rawText');
+    }
+
+    return WealthAdvisoryReply(
+      summary: rawText,
+      mood: AvatarMood.idle,
+      healthScore: 70,
+      spokenLine: rawText.split('\n').first,
+      recommendations: const <String>[],
+      actions: const <String>[],
+      isFallback: true,
+    );
   }
 
   List<Map<String, String>> _historyWindow(List<Map<String, String>> history) {
@@ -455,35 +533,6 @@ class AssistantService {
     return <String>[reply.trim()];
   }
 
-  String _normalizeAssistantReply(String raw) {
-    final String compact = raw
-        .replaceAll('\r\n', '\n')
-        .replaceAll(RegExp(r'\n{3,}'), '\n\n')
-        .trim();
-    if (compact.isEmpty) {
-      return compact;
-    }
-
-    final List<String> lines = compact
-        .split('\n')
-        .map((String line) => line.trim())
-        .where((String line) => line.isNotEmpty)
-        .toList(growable: false);
-    if (lines.length > 5) {
-      return lines.take(5).join('\n');
-    }
-
-    final List<String> sentences = compact
-        .split(RegExp(r'(?<=[.!?])\s+'))
-        .map((String part) => part.trim())
-        .where((String part) => part.isNotEmpty)
-        .toList(growable: false);
-    if (sentences.length > 4) {
-      return sentences.take(4).join(' ');
-    }
-
-    return compact;
-  }
 
   String _requireApiKey() {
     final String value = AiRuntimeConfig.apiKey.trim();

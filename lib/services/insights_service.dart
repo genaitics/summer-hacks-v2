@@ -1,31 +1,45 @@
-import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:flutter/foundation.dart';
 import 'package:student_fin_os/models/ai_insight.dart';
 import 'package:student_fin_os/models/finance_enums.dart';
 import 'package:student_fin_os/models/finance_transaction.dart';
+import 'package:student_fin_os/services/in_memory_db.dart';
+import 'package:student_fin_os/services/lambda_api_service.dart';
 import 'package:uuid/uuid.dart';
 
 class InsightsService {
-  InsightsService(this._firestore, this._uuid);
+  InsightsService(this._apiService, this._uuid);
 
-  final FirebaseFirestore _firestore;
+  final LambdaApiService _apiService;
   final Uuid _uuid;
 
-  CollectionReference<Map<String, dynamic>> _insights(String userId) {
-    return _firestore.collection('users').doc(userId).collection('insights');
-  }
+  Stream<List<AiInsight>> watchInsights(String userId) async* {
+    if (!_apiService.isConfigured) {
+      final List<AiInsight> list = InMemoryDb.insights
+          .where((AiInsight ins) => ins.userId == userId)
+          .toList()
+        ..sort((AiInsight a, AiInsight b) => b.createdAt.compareTo(a.createdAt));
+      yield list.take(30).toList();
+      return;
+    }
 
-  Stream<List<AiInsight>> watchInsights(String userId) {
-    return _insights(userId)
-        .orderBy('createdAt', descending: true)
-        .limit(30)
-        .snapshots()
-        .map((QuerySnapshot<Map<String, dynamic>> snapshot) {
-      return snapshot.docs
-          .map((QueryDocumentSnapshot<Map<String, dynamic>> doc) {
-            return AiInsight.fromMap(doc.id, doc.data());
-          })
-          .toList();
-    });
+    try {
+      final dynamic response = await _apiService.get('/insights?userId=$userId');
+      if (response is List) {
+        final List<AiInsight> list = response
+            .map((dynamic e) => AiInsight.fromMap(e['id'] ?? e['insightId'] ?? '', e as Map<String, dynamic>))
+            .toList();
+        yield list;
+      } else {
+        yield <AiInsight>[];
+      }
+    } catch (e) {
+      debugPrint('[InsightsService] API watchInsights error: $e');
+      final List<AiInsight> list = InMemoryDb.insights
+          .where((AiInsight ins) => ins.userId == userId)
+          .toList()
+        ..sort((AiInsight a, AiInsight b) => b.createdAt.compareTo(a.createdAt));
+      yield list.take(30).toList();
+    }
   }
 
   Future<void> persistInsights(String userId, List<AiInsight> items) async {
@@ -33,13 +47,22 @@ class InsightsService {
       return;
     }
 
-    final WriteBatch batch = _firestore.batch();
     for (final AiInsight insight in items) {
-      final DocumentReference<Map<String, dynamic>> ref =
-          _insights(userId).doc(insight.id);
-      batch.set(ref, insight.toMap(), SetOptions(merge: true));
+      InMemoryDb.insights.removeWhere((AiInsight ins) => ins.id == insight.id);
+      InMemoryDb.insights.add(insight);
     }
-    await batch.commit();
+
+    if (_apiService.isConfigured) {
+      try {
+        final List<Map<String, dynamic>> payload = items.map((AiInsight i) => i.toMap()).toList();
+        await _apiService.post('/insights', <String, dynamic>{
+          'userId': userId,
+          'insights': payload,
+        });
+      } catch (e) {
+        debugPrint('[InsightsService] API persistInsights error: $e');
+      }
+    }
   }
 
   List<AiInsight> generateRuleBasedInsights({

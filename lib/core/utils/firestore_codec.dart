@@ -1,10 +1,7 @@
-import 'package:cloud_firestore/cloud_firestore.dart';
-
 class FirestoreCodec {
+  FirestoreCodec._();
+
   static DateTime readDateTime(dynamic value) {
-    if (value is Timestamp) {
-      return value.toDate();
-    }
     if (value is DateTime) {
       return value;
     }
@@ -14,15 +11,15 @@ class FirestoreCodec {
     return DateTime.now().toUtc();
   }
 
-  static Timestamp writeDateTime(DateTime value) {
-    return Timestamp.fromDate(value.toUtc());
+  static String writeDateTime(DateTime value) {
+    return value.toUtc().toIso8601String();
   }
 
   static T readEnum<T extends Enum>(List<T> values, String? raw, T fallback) {
     if (raw == null) {
       return fallback;
     }
-    for (final value in values) {
+    for (final T value in values) {
       if (value.name == raw) {
         return value;
       }

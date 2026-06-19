@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:firebase_auth/firebase_auth.dart';
 import 'package:student_fin_os/l10n/app_localizations.dart';
 import 'package:student_fin_os/providers/auth_providers.dart';
 
@@ -50,9 +49,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
     ref.listen<AsyncValue<void>>(authControllerProvider, (previous, next) {
       next.whenOrNull(
         error: (error, _) {
-          final message = error is FirebaseAuthException
-              ? error.message ?? l10n.authFailed
-              : error.toString();
+          final message = error.toString().replaceAll('Exception:', '').trim();
 
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
@@ -186,6 +183,34 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                           style: const TextStyle(
                             fontWeight: FontWeight.w600,
                             fontSize: 15,
+                          ),
+                        ),
+                      ),
+                    ),
+
+                    const SizedBox(height: 12),
+
+                    /// QUICK DEMO BYPASS
+                    SizedBox(
+                      width: double.infinity,
+                      child: TextButton.icon(
+                        style: TextButton.styleFrom(
+                          padding: const EdgeInsets.symmetric(vertical: 12),
+                          foregroundColor: Theme.of(context).colorScheme.primary,
+                        ),
+                        onPressed: authState.isLoading
+                            ? null
+                            : () async {
+                                await ref
+                                    .read(authControllerProvider.notifier)
+                                    .signInDemo();
+                              },
+                        icon: const Icon(Icons.bolt),
+                        label: const Text(
+                          "Quick Demo Login (Bypass OTP)",
+                          style: TextStyle(
+                            fontWeight: FontWeight.bold,
+                            fontSize: 14,
                           ),
                         ),
                       ),

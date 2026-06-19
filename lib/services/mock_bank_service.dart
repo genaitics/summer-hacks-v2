@@ -1,168 +1,66 @@
-import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:flutter/foundation.dart';
 import 'package:student_fin_os/data/mock/mock_seed.dart';
 import 'package:student_fin_os/models/account.dart';
 import 'package:student_fin_os/models/finance_enums.dart';
 import 'package:student_fin_os/models/finance_transaction.dart';
 import 'package:student_fin_os/models/savings_goal.dart';
+import 'package:student_fin_os/services/in_memory_db.dart';
+import 'package:student_fin_os/services/lambda_api_service.dart';
 import 'package:uuid/uuid.dart';
 
 class MockBankService {
-  MockBankService(this._firestore, this._uuid);
+  MockBankService(this._apiService, this._uuid);
 
-  final FirebaseFirestore _firestore;
+  final LambdaApiService _apiService;
   final Uuid _uuid;
-  static const int _seedVersion = 2;
 
   Future<void> seedStarterData(String userId) async {
     if (userId.isEmpty) {
       return;
     }
 
-    final DocumentReference<Map<String, dynamic>> userRef =
-        _firestore.collection('users').doc(userId);
-    final CollectionReference<Map<String, dynamic>> accountsRef =
-        userRef.collection('accounts');
-    final CollectionReference<Map<String, dynamic>> txRef =
-        userRef.collection('transactions');
-    final CollectionReference<Map<String, dynamic>> goalsRef =
-        userRef.collection('savings_goals');
-    final CollectionReference<Map<String, dynamic>> preferencesRef =
-        userRef.collection('notification_preferences');
+    if (_apiService.isConfigured) {
+      try {
+        await _apiService.post('/seed', <String, dynamic>{'userId': userId});
+        debugPrint('[MockBankService] Seeding completed via Lambda Gateway.');
+        return;
+      } catch (e) {
+        debugPrint('[MockBankService] Lambda seeding failed, falling back to local memory: $e');
+      }
+    }
 
-    final DocumentSnapshot<Map<String, dynamic>> userSnapshot = await userRef.get();
-    final int seedVersion =
-        (userSnapshot.data()?['dummyBankSeedVersion'] as num?)?.toInt() ?? 0;
-
-    final QuerySnapshot<Map<String, dynamic>> existingAccounts =
-        await accountsRef.orderBy('createdAt', descending: false).get();
-    final QuerySnapshot<Map<String, dynamic>> existingTransactions =
-        await txRef.limit(1).get();
-    final QuerySnapshot<Map<String, dynamic>> existingGoals =
-        await goalsRef.limit(1).get();
-    final QuerySnapshot<Map<String, dynamic>> existingPreferences =
-        await preferencesRef.limit(1).get();
-
-    final bool shouldSeedAccounts = existingAccounts.docs.isEmpty;
-    final bool shouldSeedTransactions = existingTransactions.docs.isEmpty;
-    final bool shouldSeedGoals = existingGoals.docs.isEmpty;
-    final bool shouldSeedPreferences = existingPreferences.docs.isEmpty;
-
-    if (seedVersion >= _seedVersion &&
-        !shouldSeedAccounts &&
-        !shouldSeedTransactions &&
-        !shouldSeedGoals &&
-        !shouldSeedPreferences) {
+    if (InMemoryDb.hasSeeded) {
       return;
     }
 
     final DateTime now = DateTime.now().toUtc();
     final MockSeed seed = await _loadSeed();
 
-    final List<Account> accounts = shouldSeedAccounts
-        ? _buildStarterAccounts(
-            userId: userId,
-            now: now,
-            seedAccounts: seed.accounts,
-          )
-        : existingAccounts.docs
-            .map((QueryDocumentSnapshot<Map<String, dynamic>> doc) {
-                return Account.fromMap(doc.id, doc.data());
-              })
-            .toList();
+    final List<Account> accounts = _buildStarterAccounts(
+      userId: userId,
+      now: now,
+      seedAccounts: seed.accounts,
+    );
 
-    final List<FinanceTransaction> transactions = shouldSeedTransactions
-        ? _buildStarterTransactions(
-            userId: userId,
-            now: now,
-            accounts: accounts,
-            seedTransactions: seed.transactions,
-          )
-        : const <FinanceTransaction>[];
+    final List<FinanceTransaction> transactions = _buildStarterTransactions(
+      userId: userId,
+      now: now,
+      accounts: accounts,
+      seedTransactions: seed.transactions,
+    );
 
-    final Map<String, List<String>> transactionIdsByAccount =
-        <String, List<String>>{};
-    for (final FinanceTransaction tx in transactions) {
-      transactionIdsByAccount
-          .putIfAbsent(tx.accountId, () => <String>[])
-          .add(tx.id);
-    }
+    final List<SavingsGoal> goals = _buildStarterGoals(
+      userId: userId,
+      now: now,
+      seedGoals: seed.savingsGoals,
+    );
 
-    final List<SavingsGoal> goals = shouldSeedGoals
-        ? _buildStarterGoals(
-            userId: userId,
-            now: now,
-            seedGoals: seed.savingsGoals,
-          )
-        : const <SavingsGoal>[];
+    InMemoryDb.accounts.addAll(accounts);
+    InMemoryDb.transactions.addAll(transactions);
+    InMemoryDb.goals.addAll(goals);
+    InMemoryDb.hasSeeded = true;
 
-    final WriteBatch batch = _firestore.batch();
-
-    if (shouldSeedAccounts) {
-      for (final Account account in accounts) {
-        final List<String> accountTransactionIds =
-            transactionIdsByAccount[account.id] ?? const <String>[];
-        batch.set(
-          accountsRef.doc(account.id),
-          Account(
-            id: account.id,
-            userId: account.userId,
-            name: account.name,
-            type: account.type,
-            provider: account.provider,
-            balance: account.balance,
-            isActive: account.isActive,
-            icon: account.icon,
-            transactionIds: accountTransactionIds,
-            createdAt: account.createdAt,
-            updatedAt: account.updatedAt,
-          ).toMap(),
-        );
-      }
-    }
-
-    if (shouldSeedTransactions) {
-      for (final FinanceTransaction tx in transactions) {
-        batch.set(txRef.doc(tx.id), tx.toMap());
-      }
-    }
-
-    if (!shouldSeedAccounts && shouldSeedTransactions) {
-      for (final MapEntry<String, List<String>> entry
-          in transactionIdsByAccount.entries) {
-        batch.update(accountsRef.doc(entry.key), <String, dynamic>{
-          'transactionIds': FieldValue.arrayUnion(entry.value),
-          'updatedAt': Timestamp.fromDate(now),
-        });
-      }
-    }
-
-    for (final SavingsGoal goal in goals) {
-      batch.set(goalsRef.doc(goal.id), goal.toMap(), SetOptions(merge: true));
-    }
-
-    if (shouldSeedPreferences) {
-      batch.set(preferencesRef.doc('daily_spend'), <String, dynamic>{
-        'enabled': true,
-        'localTime': '20:00',
-        'updatedAt': Timestamp.fromDate(now),
-      }, SetOptions(merge: true));
-
-      batch.set(preferencesRef.doc('budget_alert'), <String, dynamic>{
-        'enabled': true,
-        'monthlyLimit': 8000,
-        'updatedAt': Timestamp.fromDate(now),
-      }, SetOptions(merge: true));
-    }
-
-    batch.set(userRef, <String, dynamic>{
-      'dummyBankSeedVersion': _seedVersion,
-      'dummyBankSeededAt': Timestamp.fromDate(now),
-      'updatedAt': FieldValue.serverTimestamp(),
-      'defaultCurrency': userSnapshot.data()?['defaultCurrency'] ?? 'INR',
-      'createdAt': FieldValue.serverTimestamp(),
-    }, SetOptions(merge: true));
-
-    await batch.commit();
+    debugPrint('[MockBankService] Offline Seeding completed in local memory. (Accounts: ${accounts.length}, Transactions: ${transactions.length}, Goals: ${goals.length})');
   }
 
   Future<MockSeed> _loadSeed() async {

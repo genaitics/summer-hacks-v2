@@ -7,15 +7,17 @@ import 'package:student_fin_os/models/finance_transaction.dart';
 import 'package:student_fin_os/models/gamification_models.dart';
 import 'package:student_fin_os/providers/auth_providers.dart';
 import 'package:student_fin_os/providers/dashboard_providers.dart';
-import 'package:student_fin_os/providers/firebase_providers.dart';
+import 'package:student_fin_os/providers/aws_providers.dart';
 import 'package:student_fin_os/providers/gamification_providers.dart';
+
+import 'package:student_fin_os/core/widgets/gemini_key_manager_sheet.dart';
 
 class ProfileSettingsScreen extends ConsumerWidget {
   const ProfileSettingsScreen({super.key});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final user = ref.watch(firebaseAuthProvider).currentUser;
+    final user = ref.watch(authServiceProvider).currentUser;
     final profile = ref.watch(gamificationProvider);
     final snapshot = ref.watch(dashboardSnapshotProvider);
     final List<FinanceTransaction> txList =
@@ -39,6 +41,8 @@ class ProfileSettingsScreen extends ConsumerWidget {
           const SizedBox(height: 12),
           _spendingHabitsSection(context, habits),
           const SizedBox(height: 12),
+          _geminiKeySettingsCard(context, ref),
+          const SizedBox(height: 12),
           Card(
             child: ListTile(
               leading: const Icon(Icons.logout),
@@ -50,6 +54,39 @@ class ProfileSettingsScreen extends ConsumerWidget {
             ),
           ),
         ],
+      ),
+    );
+  }
+
+  Widget _geminiKeySettingsCard(BuildContext context, WidgetRef ref) {
+    final hasKey = ref.watch(hasGeminiKeyProvider);
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
+
+    return Card(
+      child: ListTile(
+        leading: Icon(
+          Icons.vpn_key_rounded,
+          color: hasKey ? colorScheme.primary : Colors.orange,
+        ),
+        title: const Text('Gemini API Key'),
+        subtitle: Text(
+          hasKey ? 'Configured securely on device' : 'Tap to configure key for AI features',
+        ),
+        trailing: Icon(
+          hasKey ? Icons.check_circle_outline : Icons.warning_amber_rounded,
+          color: hasKey ? Colors.green : Colors.orange,
+        ),
+        onTap: () {
+          showModalBottomSheet<void>(
+            context: context,
+            isScrollControlled: true,
+            useSafeArea: true,
+            builder: (BuildContext context) {
+              return const GeminiKeyManagerSheet();
+            },
+          );
+        },
       ),
     );
   }

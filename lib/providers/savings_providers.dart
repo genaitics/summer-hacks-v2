@@ -3,7 +3,7 @@ import 'package:student_fin_os/models/finance_enums.dart';
 import 'package:student_fin_os/models/savings_goal.dart';
 import 'package:student_fin_os/providers/auth_providers.dart';
 import 'package:student_fin_os/providers/dashboard_providers.dart';
-import 'package:student_fin_os/providers/firebase_providers.dart';
+import 'package:student_fin_os/providers/aws_providers.dart';
 
 final safeToSpendProvider = Provider<double>((ref) {
   return ref.watch(dashboardSnapshotProvider).safeToSpend;

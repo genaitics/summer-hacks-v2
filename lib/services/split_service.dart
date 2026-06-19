@@ -1,82 +1,151 @@
-import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:student_fin_os/core/utils/firestore_codec.dart';
+import 'package:flutter/foundation.dart';
 import 'package:student_fin_os/models/finance_enums.dart';
 import 'package:student_fin_os/models/split_expense.dart';
 import 'package:student_fin_os/models/split_group.dart';
+import 'package:student_fin_os/services/in_memory_db.dart';
+import 'package:student_fin_os/services/lambda_api_service.dart';
 
 class SplitService {
-  SplitService(this._firestore);
+  SplitService(this._apiService);
 
-  final FirebaseFirestore _firestore;
+  final LambdaApiService _apiService;
 
-  CollectionReference<Map<String, dynamic>> _groups(String userId) {
-    return _firestore.collection('users').doc(userId).collection('split_groups');
-  }
+  Stream<List<SplitGroup>> watchGroups(String userId) async* {
+    if (!_apiService.isConfigured) {
+      final List<SplitGroup> list = InMemoryDb.splitGroups
+          .where((SplitGroup g) => g.memberIds.contains(userId))
+          .toList()
+        ..sort((SplitGroup a, SplitGroup b) => b.updatedAt.compareTo(a.updatedAt));
+      yield list;
+      return;
+    }
 
-  CollectionReference<Map<String, dynamic>> _groupExpenses(String userId) {
-    return _firestore
-        .collection('users')
-        .doc(userId)
-        .collection('split_expenses');
-  }
-
-  Stream<List<SplitGroup>> watchGroups(String userId) {
-    return _groups(userId)
-        .orderBy('updatedAt', descending: true)
-        .snapshots()
-        .map((QuerySnapshot<Map<String, dynamic>> snapshot) {
-      return snapshot.docs
-          .map((QueryDocumentSnapshot<Map<String, dynamic>> doc) {
-            return SplitGroup.fromMap(doc.id, doc.data());
-          })
-          .toList();
-    });
+    try {
+      final dynamic response = await _apiService.get('/splits/groups?userId=$userId');
+      if (response is List) {
+        final List<SplitGroup> list = response
+            .map((dynamic e) => SplitGroup.fromMap(e['id'] ?? e['groupId'] ?? '', e as Map<String, dynamic>))
+            .toList();
+        yield list;
+      } else {
+        yield <SplitGroup>[];
+      }
+    } catch (e) {
+      debugPrint('[SplitService] API watchGroups error: $e');
+      final List<SplitGroup> list = InMemoryDb.splitGroups
+          .where((SplitGroup g) => g.memberIds.contains(userId))
+          .toList()
+        ..sort((SplitGroup a, SplitGroup b) => b.updatedAt.compareTo(a.updatedAt));
+      yield list;
+    }
   }
 
   Future<void> createGroup(String userId, SplitGroup group) async {
-    await _groups(userId).doc(group.id).set(group.toMap(), SetOptions(merge: true));
+    InMemoryDb.splitGroups.removeWhere((SplitGroup g) => g.id == group.id);
+    InMemoryDb.splitGroups.add(group);
+
+    if (_apiService.isConfigured) {
+      try {
+        await _apiService.post('/splits/groups', group.toMap());
+      } catch (e) {
+        debugPrint('[SplitService] API createGroup error: $e');
+      }
+    }
   }
 
   Stream<List<SplitExpense>> watchGroupExpenses({
     required String userId,
     required String groupId,
-  }) {
-    return _groupExpenses(userId)
-        .where('groupId', isEqualTo: groupId)
-        .orderBy('expenseAt', descending: true)
-        .snapshots()
-        .map((QuerySnapshot<Map<String, dynamic>> snapshot) {
-      return snapshot.docs
-          .map((QueryDocumentSnapshot<Map<String, dynamic>> doc) {
-            return SplitExpense.fromMap(doc.id, doc.data());
-          })
-          .toList();
-    });
+  }) async* {
+    if (!_apiService.isConfigured) {
+      final List<SplitExpense> list = InMemoryDb.splitExpenses
+          .where((SplitExpense e) => e.groupId == groupId)
+          .toList()
+        ..sort((SplitExpense a, SplitExpense b) => b.expenseAt.compareTo(a.expenseAt));
+      yield list;
+      return;
+    }
+
+    try {
+      final dynamic response = await _apiService.get('/splits/expenses?userId=$userId&groupId=$groupId');
+      if (response is List) {
+        final List<SplitExpense> list = response
+            .map((dynamic e) => SplitExpense.fromMap(e['id'] ?? e['expenseId'] ?? '', e as Map<String, dynamic>))
+            .toList();
+        yield list;
+      } else {
+        yield <SplitExpense>[];
+      }
+    } catch (e) {
+      debugPrint('[SplitService] API watchGroupExpenses error: $e');
+      final List<SplitExpense> list = InMemoryDb.splitExpenses
+          .where((SplitExpense e) => e.groupId == groupId)
+          .toList()
+        ..sort((SplitExpense a, SplitExpense b) => b.expenseAt.compareTo(a.expenseAt));
+      yield list;
+    }
   }
 
   Future<void> addGroupExpense(String userId, SplitExpense expense) async {
-    final WriteBatch batch = _firestore.batch();
-    final DocumentReference<Map<String, dynamic>> expenseRef =
-        _groupExpenses(userId).doc(expense.id);
-    final DocumentReference<Map<String, dynamic>> groupRef =
-        _groups(userId).doc(expense.groupId);
+    InMemoryDb.splitExpenses.removeWhere((SplitExpense e) => e.id == expense.id);
+    InMemoryDb.splitExpenses.add(expense);
 
-    batch.set(expenseRef, expense.toMap(), SetOptions(merge: true));
-    batch.update(groupRef, <String, dynamic>{
-      'updatedAt': FirestoreCodec.writeDateTime(DateTime.now().toUtc()),
-    });
+    final int groupIdx = InMemoryDb.splitGroups.indexWhere((SplitGroup g) => g.id == expense.groupId);
+    if (groupIdx != -1) {
+      final SplitGroup group = InMemoryDb.splitGroups[groupIdx];
+      InMemoryDb.splitGroups[groupIdx] = SplitGroup(
+        id: group.id,
+        ownerId: group.ownerId,
+        name: group.name,
+        memberIds: group.memberIds,
+        description: group.description,
+        createdAt: group.createdAt,
+        updatedAt: DateTime.now().toUtc(),
+      );
+    }
 
-    await batch.commit();
+    if (_apiService.isConfigured) {
+      try {
+        await _apiService.post('/splits/expenses', expense.toMap());
+      } catch (e) {
+        debugPrint('[SplitService] API addGroupExpense error: $e');
+      }
+    }
   }
 
   Future<void> markSettled({
     required String userId,
     required String expenseId,
   }) async {
-    await _groupExpenses(userId).doc(expenseId).update(<String, dynamic>{
-      'status': SplitStatus.settled.name,
-      'updatedAt': FirestoreCodec.writeDateTime(DateTime.now().toUtc()),
-    });
+    final int idx = InMemoryDb.splitExpenses.indexWhere((SplitExpense e) => e.id == expenseId);
+    if (idx != -1) {
+      final SplitExpense expense = InMemoryDb.splitExpenses[idx];
+      InMemoryDb.splitExpenses[idx] = SplitExpense(
+        id: expense.id,
+        groupId: expense.groupId,
+        createdBy: expense.createdBy,
+        title: expense.title,
+        totalAmount: expense.totalAmount,
+        currency: expense.currency,
+        paidBy: expense.paidBy,
+        owedBy: expense.owedBy,
+        status: SplitStatus.settled,
+        expenseAt: expense.expenseAt,
+        createdAt: expense.createdAt,
+        updatedAt: DateTime.now().toUtc(),
+      );
+    }
+
+    if (_apiService.isConfigured) {
+      try {
+        await _apiService.post('/splits/expenses/settle', <String, dynamic>{
+          'userId': userId,
+          'expenseId': expenseId,
+        });
+      } catch (e) {
+        debugPrint('[SplitService] API markSettled error: $e');
+      }
+    }
   }
 
   Map<String, double> netBalances(

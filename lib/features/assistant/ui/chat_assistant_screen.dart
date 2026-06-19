@@ -3,6 +3,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:student_fin_os/features/assistant/ui/voice_assistant_sheet.dart';
 import 'package:student_fin_os/models/assistant_models.dart';
 import 'package:student_fin_os/providers/assistant_providers.dart';
+import 'package:student_fin_os/core/widgets/gemini_key_setup_widget.dart';
+import 'package:student_fin_os/providers/aws_providers.dart';
 
 class ChatAssistantScreen extends ConsumerStatefulWidget {
   const ChatAssistantScreen({super.key, this.initialMessage});
@@ -73,6 +75,30 @@ class _ChatAssistantScreenState extends ConsumerState<ChatAssistantScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final hasKey = ref.watch(hasGeminiKeyProvider);
+    if (!hasKey) {
+      return Scaffold(
+        appBar: AppBar(
+          title: const Text('FinMate'),
+        ),
+        body: Container(
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              begin: Alignment.topCenter,
+              end: Alignment.bottomCenter,
+              colors: [
+                Theme.of(context).colorScheme.surface,
+                Theme.of(context).colorScheme.surfaceContainerLowest,
+              ],
+            ),
+          ),
+          child: const SafeArea(
+            child: GeminiKeySetupWidget(),
+          ),
+        ),
+      );
+    }
+
     final ChatAssistantState state = ref.watch(chatAssistantControllerProvider);
 
     ref.listen<ChatAssistantState>(chatAssistantControllerProvider, (

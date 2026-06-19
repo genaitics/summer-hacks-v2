@@ -13,7 +13,7 @@ import 'package:student_fin_os/models/savings_goal.dart';
 import 'package:student_fin_os/providers/dashboard_providers.dart';
 import 'package:student_fin_os/features/dashboard/ui/transaction_details_sheet.dart';
 import 'package:student_fin_os/providers/auth_providers.dart';
-import 'package:student_fin_os/providers/firebase_providers.dart';
+import 'package:student_fin_os/providers/aws_providers.dart';
 import 'package:student_fin_os/core/utils/brand_styles.dart';
 import 'package:student_fin_os/core/utils/dummy_data.dart';
 import 'package:student_fin_os/features/dashboard/ui/spending_modules_screen.dart';

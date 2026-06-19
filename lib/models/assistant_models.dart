@@ -1,4 +1,5 @@
 import 'dart:typed_data';
+import 'package:student_fin_os/models/wealth_advisory_reply.dart';
 
 enum AssistantRole { user, assistant }
 
@@ -53,6 +54,7 @@ class AssistantReply {
     required this.fallbackUsed,
     required this.generatedAt,
     required this.suggestions,
+    this.wealthAdvisorData,
   });
 
   final String reply;
@@ -60,6 +62,7 @@ class AssistantReply {
   final bool fallbackUsed;
   final DateTime generatedAt;
   final List<String> suggestions;
+  final WealthAdvisoryReply? wealthAdvisorData;
 }
 
 class VoiceAssistantReply {
@@ -69,6 +72,7 @@ class VoiceAssistantReply {
     required this.fallbackUsed,
     required this.generatedAt,
     required this.speechChunks,
+    this.wealthAdvisorData,
   });
 
   final String reply;
@@ -76,6 +80,7 @@ class VoiceAssistantReply {
   final bool fallbackUsed;
   final DateTime generatedAt;
   final List<String> speechChunks;
+  final WealthAdvisoryReply? wealthAdvisorData;
 }
 
 enum VoiceLiveEventType {

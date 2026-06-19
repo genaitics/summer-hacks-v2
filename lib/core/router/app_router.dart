@@ -5,30 +5,32 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:student_fin_os/features/assistant/ui/chat_assistant_screen.dart';
 import 'package:student_fin_os/features/auth/ui/login_screen.dart';
-import 'package:student_fin_os/features/profile/ui/profile_settings_screen.dart';
 import 'package:student_fin_os/features/shell/ui/app_shell_screen.dart';
-import 'package:student_fin_os/providers/firebase_providers.dart';
+import 'package:student_fin_os/providers/aws_providers.dart';
 
 class AppRoutes {
   static const String login = '/login';
+  static const String advisor = '/app/advisor';
   static const String dashboard = '/app/dashboard';
+  static const String cashFlow = '/app/cashflow';
+  static const String savings = '/app/savings';
+  static const String profile = '/app/profile';
   static const String accounts = '/app/accounts';
   static const String transactions = '/app/transactions';
   static const String splits = '/app/splits';
-  static const String savings = '/app/savings';
   static const String insights = '/app/insights';
-  static const String cashFlow = '/app/cashflow';
-  static const String profileSettings = '/app/profile';
   static const String chatAssistant = '/assistant/chat';
 
   static const List<String> appTabs = <String>[
+    advisor,
     dashboard,
+    cashFlow,
+    savings,
+    profile,
     accounts,
     transactions,
     splits,
-    savings,
     insights,
-    cashFlow,
   ];
 
   static int indexFromLocation(String location) {
@@ -44,7 +46,7 @@ final appRouterProvider = Provider<GoRouter>((ref) {
   ref.onDispose(refreshNotifier.dispose);
 
   return GoRouter(
-    initialLocation: AppRoutes.dashboard,
+    initialLocation: AppRoutes.advisor,
     refreshListenable: refreshNotifier,
     routes: <GoRoute>[
       GoRoute(
@@ -54,18 +56,11 @@ final appRouterProvider = Provider<GoRouter>((ref) {
             const LoginScreen(),
       ),
       GoRoute(
-        path: AppRoutes.profileSettings,
-        name: 'profile-settings',
-        builder: (BuildContext context, GoRouterState state) {
-          return const ProfileSettingsScreen();
-        },
-      ),
-      GoRoute(
         path: '/app/:tab',
         name: 'app-tab',
         builder: (BuildContext context, GoRouterState state) {
           final String location =
-              '/app/${state.pathParameters['tab'] ?? 'dashboard'}';
+              '/app/${state.pathParameters['tab'] ?? 'advisor'}';
           return AppShellScreen(
             initialIndex: AppRoutes.indexFromLocation(location),
           );
@@ -75,12 +70,14 @@ final appRouterProvider = Provider<GoRouter>((ref) {
         path: AppRoutes.chatAssistant,
         name: 'chat-assistant',
         builder: (BuildContext context, GoRouterState state) {
-          return const ChatAssistantScreen();
+          final String? extraMsg = state.extra as String?;
+          final String? queryMsg = state.uri.queryParameters['msg'];
+          return ChatAssistantScreen(initialMessage: extraMsg ?? queryMsg);
         },
       ),
     ],
     redirect: (BuildContext context, GoRouterState state) {
-      final bool loggedIn = ref.read(firebaseAuthProvider).currentUser != null;
+      final bool loggedIn = ref.read(authServiceProvider).currentUser != null;
       final String location = state.matchedLocation;
       final bool isLoggingIn = location == AppRoutes.login;
       final bool inAppArea = location.startsWith('/app/');
@@ -90,10 +87,10 @@ final appRouterProvider = Provider<GoRouter>((ref) {
         return AppRoutes.login;
       }
       if (loggedIn && isLoggingIn) {
-        return AppRoutes.dashboard;
+        return AppRoutes.advisor;
       }
       if (loggedIn && !inAppArea && !inAssistantArea && !isLoggingIn) {
-        return AppRoutes.dashboard;
+        return AppRoutes.advisor;
       }
       return null;
     },

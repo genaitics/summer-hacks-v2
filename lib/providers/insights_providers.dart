@@ -2,7 +2,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:student_fin_os/models/ai_insight.dart';
 import 'package:student_fin_os/providers/auth_providers.dart';
 import 'package:student_fin_os/providers/dashboard_providers.dart';
-import 'package:student_fin_os/providers/firebase_providers.dart';
+import 'package:student_fin_os/providers/aws_providers.dart';
 
 final insightsFeedProvider = StreamProvider.autoDispose<List<AiInsight>>((ref) {
   final String? userId = ref.watch(currentUserIdProvider);

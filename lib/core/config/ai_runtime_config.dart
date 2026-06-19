@@ -1,7 +1,6 @@
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 
 class AiRuntimeConfig {
-  static const String _defineApiKey = String.fromEnvironment('AI_API_KEY');
   static const String _defineChatFastModel = String.fromEnvironment(
     'AI_CHAT_FAST_MODEL',
     defaultValue: 'gemini-2.0-flash',
@@ -31,7 +30,9 @@ class AiRuntimeConfig {
     defaultValue: 'false',
   );
 
-  static String get apiKey => _readAny(<String>['AI_API_KEY', 'GEMINI_API_KEY'], _defineApiKey);
+  static String? userGeminiApiKey;
+
+  static String get apiKey => userGeminiApiKey ?? '';
 
   static String get chatFastModel =>
       _readAny(<String>['AI_CHAT_FAST_MODEL', 'GEMINI_CHAT_FAST_MODEL'], _defineChatFastModel);

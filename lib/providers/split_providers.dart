@@ -3,7 +3,7 @@ import 'package:student_fin_os/models/finance_enums.dart';
 import 'package:student_fin_os/models/split_expense.dart';
 import 'package:student_fin_os/models/split_group.dart';
 import 'package:student_fin_os/providers/auth_providers.dart';
-import 'package:student_fin_os/providers/firebase_providers.dart';
+import 'package:student_fin_os/providers/aws_providers.dart';
 
 final selectedSplitGroupIdProvider = StateProvider<String?>((ref) {
   return null;

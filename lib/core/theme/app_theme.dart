@@ -3,33 +3,35 @@ import 'package:google_fonts/google_fonts.dart';
 
 class AppTheme {
   static ThemeData dark() {
-    const Color base = Color(0xFFF4F7F5);
-    const Color panel = Color(0xFFFFFFFF);
-    const Color panelAlt = Color(0xFFEFF4F1);
-    const Color accent = Color(0xFF5BCB8E);
-    const Color accentHot = Color(0xFF79A6FF);
-    const Color textPrimary = Color(0xFF122025);
-    const Color textSecondary = Color(0xFF5F7278);
+    const Color base = Color(0xFF0A0F1E); // deep navy background
+    const Color panel = Color(0xFF141C33); // dark card surface
+    const Color panelAlt = Color(0xFF1E2845); // lighter container background
+    const Color accent = Color(0xFFFFD700); // premium gold accent
+    const Color accentHot = Color(0xFF3B82F6); // bright blue highlight
+    const Color textPrimary = Colors.white; // high emphasis text
+    const Color textSecondary = Colors.white70; // medium emphasis text
 
     final TextTheme textTheme = GoogleFonts.spaceGroteskTextTheme(
-      ThemeData(brightness: Brightness.light).textTheme,
+      ThemeData(brightness: Brightness.dark).textTheme,
     ).apply(
       bodyColor: textPrimary,
       displayColor: textPrimary,
     );
 
     return ThemeData(
-      brightness: Brightness.light,
+      brightness: Brightness.dark,
       useMaterial3: true,
       scaffoldBackgroundColor: base,
       textTheme: textTheme,
-      colorScheme: const ColorScheme.light(
+      colorScheme: const ColorScheme.dark(
         surface: panel,
         surfaceContainerHighest: panelAlt,
         primary: accent,
         secondary: accentHot,
-        onPrimary: Colors.white,
+        onPrimary: base,
         onSurface: textPrimary,
+        primaryContainer: panel,
+        onPrimaryContainer: textPrimary,
       ),
       appBarTheme: const AppBarTheme(
         elevation: 0,
@@ -54,10 +56,10 @@ class AppTheme {
           borderSide: BorderSide.none,
         ),
       ),
-      dividerColor: const Color(0xFFE3ECE7),
+      dividerColor: const Color(0xFF1E293B),
       navigationBarTheme: NavigationBarThemeData(
         backgroundColor: panel,
-        indicatorColor: accent.withValues(alpha: 0.16),
+        indicatorColor: accent.withOpacity(0.16),
         labelTextStyle: WidgetStateProperty.resolveWith<TextStyle?>((Set<WidgetState> states) {
           final bool selected = states.contains(WidgetState.selected);
           return TextStyle(

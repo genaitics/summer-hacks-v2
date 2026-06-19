@@ -1,7 +1,7 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:student_fin_os/models/cash_flow_point.dart';
 import 'package:student_fin_os/providers/dashboard_providers.dart';
-import 'package:student_fin_os/providers/firebase_providers.dart';
+import 'package:student_fin_os/providers/aws_providers.dart';
 
 final cashFlowProjectionProvider = Provider<List<CashFlowPoint>>((ref) {
   final snapshot = ref.watch(dashboardSnapshotProvider);

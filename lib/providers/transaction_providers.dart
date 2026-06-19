@@ -2,7 +2,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:student_fin_os/models/finance_enums.dart';
 import 'package:student_fin_os/models/finance_transaction.dart';
 import 'package:student_fin_os/providers/auth_providers.dart';
-import 'package:student_fin_os/providers/firebase_providers.dart';
+import 'package:student_fin_os/providers/aws_providers.dart';
 
 final transactionCategoriesProvider = Provider<List<String>>((ref) {
   return const <String>[

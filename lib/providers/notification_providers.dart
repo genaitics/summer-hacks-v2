@@ -1,6 +1,6 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:student_fin_os/providers/auth_providers.dart';
-import 'package:student_fin_os/providers/firebase_providers.dart';
+import 'package:student_fin_os/providers/aws_providers.dart';
 
 final notificationPreferencesProvider = StreamProvider.autoDispose<Map<String, dynamic>>((ref) {
   final String? userId = ref.watch(currentUserIdProvider);

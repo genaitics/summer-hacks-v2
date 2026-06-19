@@ -1,8 +1,8 @@
-import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:student_fin_os/providers/firebase_providers.dart';
+import 'package:student_fin_os/models/auth_user.dart';
+import 'package:student_fin_os/providers/aws_providers.dart';
 
-final authStateProvider = StreamProvider<User?>((ref) {
+final authStateProvider = StreamProvider<AuthUser?>((ref) {
   return ref.watch(authServiceProvider).authStateChanges();
 });
 
@@ -26,11 +26,7 @@ class AuthController extends AsyncNotifier<void> {
   Future<void> signInWithGoogle() async {
     state = const AsyncLoading();
     state = await AsyncValue.guard(() async {
-      final credential = await ref.read(authServiceProvider).signInWithGoogle();
-      final String? userId = credential.user?.uid;
-      if (userId != null && userId.isNotEmpty) {
-        await ref.read(mockBankServiceProvider).seedStarterData(userId);
-      }
+      throw Exception('Google Sign-in is not configured yet. Please use email OTP authentication.');
     });
   }
 
@@ -44,13 +40,22 @@ class AuthController extends AsyncNotifier<void> {
   Future<void> verifyOtp({required String email, required String otp}) async {
     state = const AsyncLoading();
     state = await AsyncValue.guard(() async {
-      final credential = await ref
+      final user = await ref
           .read(authServiceProvider)
           .verifyEmailOtp(email: email, otp: otp);
-      final String? userId = credential.user?.uid;
-      if (userId != null && userId.isNotEmpty) {
+      final String userId = user.uid;
+      if (userId.isNotEmpty) {
         await ref.read(mockBankServiceProvider).seedStarterData(userId);
       }
+    });
+  }
+
+  Future<void> signInDemo() async {
+    state = const AsyncLoading();
+    state = await AsyncValue.guard(() async {
+      final user = await ref.read(authServiceProvider).signInDemo();
+      final String userId = user.uid;
+      await ref.read(mockBankServiceProvider).seedStarterData(userId);
     });
   }
 

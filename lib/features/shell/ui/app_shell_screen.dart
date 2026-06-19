@@ -10,6 +10,8 @@ import 'package:student_fin_os/features/insights/ui/insights_screen.dart';
 import 'package:student_fin_os/features/savings/ui/savings_screen.dart';
 import 'package:student_fin_os/features/splits/ui/splits_screen.dart';
 import 'package:student_fin_os/features/transactions/ui/transactions_screen.dart';
+import 'package:student_fin_os/features/profile/ui/profile_settings_screen.dart';
+import 'package:student_fin_os/features/wealth_advisor/ui/wealth_advisor_screen.dart';
 import 'package:student_fin_os/providers/auth_providers.dart';
 import 'package:student_fin_os/features/shell/ui/alerts_sheet.dart';
 import 'package:student_fin_os/features/assistant/ui/chat_assistant_screen.dart';
@@ -25,30 +27,31 @@ class AppShellScreen extends ConsumerStatefulWidget {
 
 class _AppShellScreenState extends ConsumerState<AppShellScreen> {
   late int _index;
-  static const List<int> _mobileTabIndexes = <int>[0, 2, 4, 5];
+  static const List<int> _mobileTabIndexes = <int>[0, 1, 2, 3, 4];
 
   late final List<Widget> _pages = const <Widget>[
+    WealthAdvisorScreen(),
     DashboardScreen(),
+    CashFlowScreen(),
+    SavingsScreen(),
+    ProfileSettingsScreen(),
     AccountAggregatorScreen(),
     TransactionsScreen(),
     SplitsScreen(),
-    SavingsScreen(),
     InsightsScreen(),
-    CashFlowScreen(),
   ];
 
   late final List<NavigationDestination> _destinations =
       const <NavigationDestination>[
-        NavigationDestination(icon: Icon(Icons.space_dashboard), label: 'Home'),
-        NavigationDestination(
-          icon: Icon(Icons.account_balance),
-          label: 'Accounts',
-        ),
+        NavigationDestination(icon: Icon(Icons.auto_awesome), label: 'Advisor'),
+        NavigationDestination(icon: Icon(Icons.space_dashboard), label: 'Dashboard'),
+        NavigationDestination(icon: Icon(Icons.timeline), label: 'CashFlow'),
+        NavigationDestination(icon: Icon(Icons.savings), label: 'Goals'),
+        NavigationDestination(icon: Icon(Icons.account_circle), label: 'Profile'),
+        NavigationDestination(icon: Icon(Icons.account_balance), label: 'Accounts'),
         NavigationDestination(icon: Icon(Icons.swap_horiz), label: 'Txns'),
         NavigationDestination(icon: Icon(Icons.groups), label: 'Splits'),
-        NavigationDestination(icon: Icon(Icons.savings), label: 'Savings'),
         NavigationDestination(icon: Icon(Icons.lightbulb), label: 'Insights'),
-        NavigationDestination(icon: Icon(Icons.timeline), label: 'CashFlow'),
       ];
 
   @override
@@ -89,47 +92,6 @@ class _AppShellScreenState extends ConsumerState<AppShellScreen> {
   Widget _buildCustomBottomNavigationBar(BuildContext context) {
     final ColorScheme colorScheme = Theme.of(context).colorScheme;
     final int selectedIndex = _mobileSelectedIndex();
-
-    void showAssistantChoices() {
-      showModalBottomSheet<void>(
-        context: context,
-        builder: (BuildContext sheetContext) {
-          return SafeArea(
-            child: Padding(
-              padding: const EdgeInsets.symmetric(vertical: 16),
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: <Widget>[
-                  Text(
-                    'FinMate AI',
-                    style: Theme.of(context).textTheme.titleLarge,
-                  ),
-                  const SizedBox(height: 16),
-                  ListTile(
-                    leading: const Icon(Icons.chat_bubble_outline),
-                    title: const Text('AI Chat'),
-                    subtitle: const Text('Text-based guidance & planning'),
-                    onTap: () {
-                      Navigator.pop(sheetContext);
-                      context.push(AppRoutes.chatAssistant);
-                    },
-                  ),
-                  ListTile(
-                    leading: const Icon(Icons.graphic_eq),
-                    title: const Text('AI Voice'),
-                    subtitle: const Text('Hands-free continuous conversation'),
-                    onTap: () {
-                      Navigator.pop(sheetContext);
-                      _openVoiceAssistant();
-                    },
-                  ),
-                ],
-              ),
-            ),
-          );
-        },
-      );
-    }
 
     Widget buildNavItem(IconData icon, String label, int index) {
       final bool isSelected = selectedIndex == index;
@@ -189,27 +151,11 @@ class _AppShellScreenState extends ConsumerState<AppShellScreen> {
         child: Row(
           mainAxisAlignment: MainAxisAlignment.spaceEvenly,
           children: <Widget>[
-            buildNavItem(Icons.space_dashboard, 'Home', 0),
-            buildNavItem(Icons.swap_horiz, 'Txns', 1),
-            Card(
-              elevation: 4,
-              color: colorScheme.primary,
-              margin: const EdgeInsets.symmetric(horizontal: 4),
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(20),
-              ),
-              child: Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 4),
-                child: IconButton(
-                  tooltip: 'FinMate AI',
-                  icon: Icon(Icons.auto_awesome,
-                      color: colorScheme.onPrimary),
-                  onPressed: showAssistantChoices,
-                ),
-              ),
-            ),
-            buildNavItem(Icons.savings, 'Savings', 2),
-            buildNavItem(Icons.lightbulb, 'Insights', 3),
+            buildNavItem(Icons.auto_awesome, 'Advisor', 0),
+            buildNavItem(Icons.space_dashboard, 'Dashboard', 1),
+            buildNavItem(Icons.timeline, 'CashFlow', 2),
+            buildNavItem(Icons.savings, 'Goals', 3),
+            buildNavItem(Icons.account_circle, 'Profile', 4),
           ],
         ),
       ),
@@ -221,18 +167,20 @@ class _AppShellScreenState extends ConsumerState<AppShellScreen> {
     final bool desktopLayout = MediaQuery.of(context).size.width >= 1000;
 
     return Scaffold(
-      appBar: AppBar(
-        leading: Builder(
-          builder: (context) {
-            return IconButton(
-              tooltip: 'Profile',
-              icon: const Icon(Icons.account_circle, size: 28),
-              onPressed: () {
-                context.push(AppRoutes.profileSettings);
-              },
-            );
-          }
-        ),
+      appBar: _index == 0
+          ? null
+          : AppBar(
+              leading: Builder(
+                builder: (BuildContext context) {
+                  return IconButton(
+                    tooltip: 'Profile',
+                    icon: const Icon(Icons.account_circle, size: 28),
+                    onPressed: () {
+                      _onDestinationSelected(4);
+                    },
+                  );
+                }
+              ),
         title: Container(
           height: 40,
           margin: const EdgeInsets.symmetric(horizontal: 4),

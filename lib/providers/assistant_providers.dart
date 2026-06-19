@@ -8,7 +8,7 @@ import 'package:student_fin_os/models/savings_goal.dart';
 import 'package:student_fin_os/models/split_expense.dart';
 import 'package:student_fin_os/models/split_group.dart';
 import 'package:student_fin_os/providers/dashboard_providers.dart';
-import 'package:student_fin_os/providers/firebase_providers.dart';
+import 'package:student_fin_os/providers/aws_providers.dart';
 import 'package:student_fin_os/providers/savings_providers.dart';
 import 'package:student_fin_os/providers/split_providers.dart';
 import 'package:student_fin_os/providers/transaction_providers.dart';
