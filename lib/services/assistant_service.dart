@@ -173,7 +173,7 @@ class AssistantService {
 
     final List<String> candidates = _uniqueModelCandidates(<String>[
       AiRuntimeConfig.chatFastModel,
-      'gemini-2.0-flash',
+      'gemini-2.5-flash',
       AiRuntimeConfig.chatDeepModel,
       'gemini-1.5-flash',
     ]);
@@ -305,7 +305,7 @@ class AssistantService {
     // Sanitize placeholder model names if they leak in
     String sanitizedModel = model.trim();
     if (sanitizedModel.contains('fast-model')) {
-      sanitizedModel = 'gemini-2.0-flash';
+      sanitizedModel = 'gemini-2.5-flash';
     } else if (sanitizedModel.contains('deep-model')) {
       sanitizedModel = 'gemini-1.5-pro';
     }

@@ -3,7 +3,7 @@ import 'package:flutter_dotenv/flutter_dotenv.dart';
 class AiRuntimeConfig {
   static const String _defineChatFastModel = String.fromEnvironment(
     'AI_CHAT_FAST_MODEL',
-    defaultValue: 'gemini-2.0-flash',
+    defaultValue: 'gemini-2.5-flash',
   );
   static const String _defineChatDeepModel = String.fromEnvironment(
     'AI_CHAT_DEEP_MODEL',
@@ -48,7 +48,7 @@ class AiRuntimeConfig {
   static String get chatFastModel {
     final String val = _readAny(<String>['AI_CHAT_FAST_MODEL', 'GEMINI_CHAT_FAST_MODEL'], _defineChatFastModel);
     if (val.contains('fast-model')) {
-      return 'gemini-2.0-flash';
+      return 'gemini-2.5-flash';
     }
     return val;
   }
