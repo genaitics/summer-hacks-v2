@@ -18,7 +18,7 @@ class StudentFinOsApp extends ConsumerWidget {
     return MaterialApp.router(
       onGenerateTitle: (BuildContext context) => AppLocalizations.of(context)!.appTitle,
       debugShowCheckedModeBanner: false,
-      theme: AppTheme.dark(),
+      theme: AppTheme.light(),
       locale: selectedLocale,
       supportedLocales: AppLocalizations.supportedLocales,
       localizationsDelegates: const <LocalizationsDelegate<dynamic>>[

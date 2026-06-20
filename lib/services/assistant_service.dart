@@ -302,9 +302,22 @@ class AssistantService {
     required int maxOutputTokens,
     required Duration requestTimeout,
   }) async {
+    // Sanitize placeholder model names if they leak in
+    String sanitizedModel = model.trim();
+    if (sanitizedModel.contains('fast-model')) {
+      sanitizedModel = 'gemini-2.0-flash';
+    } else if (sanitizedModel.contains('deep-model')) {
+      sanitizedModel = 'gemini-1.5-pro';
+    }
+
+    // Ensure models/ prefix is present for the API v1beta generateContent endpoint
+    final String normalizedModel = sanitizedModel.startsWith('models/')
+        ? sanitizedModel
+        : 'models/$sanitizedModel';
+
     final Uri uri = Uri.https(
       'generativelanguage.googleapis.com',
-      '/v1beta/$model:generateContent',
+      '/v1beta/$normalizedModel:generateContent',
       <String, String>{'key': apiKey},
     );
 
@@ -577,7 +590,7 @@ class AssistantService {
 
   String _normalizeLiveModel(String rawModel) {
     final String trimmed = rawModel.trim();
-    if (trimmed.isEmpty) {
+    if (trimmed.isEmpty || trimmed.contains('voice-model')) {
       return 'models/gemini-3.1-flash-live-preview';
     }
     if (trimmed.startsWith('models/')) {

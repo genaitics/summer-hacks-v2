@@ -45,14 +45,29 @@ class AiRuntimeConfig {
     return _readAny(<String>['AI_API_KEY', 'GEMINI_API_KEY'], _defineApiKey);
   }
 
-  static String get chatFastModel =>
-      _readAny(<String>['AI_CHAT_FAST_MODEL', 'GEMINI_CHAT_FAST_MODEL'], _defineChatFastModel);
+  static String get chatFastModel {
+    final String val = _readAny(<String>['AI_CHAT_FAST_MODEL', 'GEMINI_CHAT_FAST_MODEL'], _defineChatFastModel);
+    if (val.contains('fast-model')) {
+      return 'gemini-2.0-flash';
+    }
+    return val;
+  }
 
-  static String get chatDeepModel =>
-      _readAny(<String>['AI_CHAT_DEEP_MODEL', 'GEMINI_CHAT_DEEP_MODEL'], _defineChatDeepModel);
+  static String get chatDeepModel {
+    final String val = _readAny(<String>['AI_CHAT_DEEP_MODEL', 'GEMINI_CHAT_DEEP_MODEL'], _defineChatDeepModel);
+    if (val.contains('deep-model')) {
+      return 'gemini-1.5-pro';
+    }
+    return val;
+  }
 
-  static String get voiceModel =>
-      _readAny(<String>['AI_VOICE_MODEL', 'GEMINI_VOICE_MODEL'], _defineVoiceModel);
+  static String get voiceModel {
+    final String val = _readAny(<String>['AI_VOICE_MODEL', 'GEMINI_VOICE_MODEL'], _defineVoiceModel);
+    if (val == 'models/gemini-3.1-flash-live-preview' || val == 'models/voice-model' || val == 'voice-model') {
+      return 'models/gemini-3.1-flash-live-preview';
+    }
+    return val;
+  }
 
     static String get liveVoiceName =>
       _readAny(<String>['AI_LIVE_VOICE_NAME', 'GEMINI_LIVE_VOICE_NAME'], _defineLiveVoiceName);

@@ -114,7 +114,7 @@ class _WealthAdvisorScreenState extends ConsumerState<WealthAdvisorScreen> {
                             'Namaste, $displayName!',
                             style: theme.textTheme.headlineMedium?.copyWith(
                               fontWeight: FontWeight.bold,
-                              color: Colors.white,
+                              color: colorScheme.onSurface,
                             ),
                           ),
                           const SizedBox(height: 4),
@@ -138,7 +138,7 @@ class _WealthAdvisorScreenState extends ConsumerState<WealthAdvisorScreen> {
                                 builder: (context) => const AlertsSheet(),
                               );
                             },
-                            icon: const Badge(child: Icon(Icons.notifications_none, color: Colors.white)),
+                            icon: Badge(child: Icon(Icons.notifications_none, color: colorScheme.onSurface)),
                           ),
                           IconButton(
                             tooltip: 'AI Voice Mode',
@@ -163,10 +163,10 @@ class _WealthAdvisorScreenState extends ConsumerState<WealthAdvisorScreen> {
                   child: Container(
                     padding: const EdgeInsets.all(20),
                     decoration: BoxDecoration(
-                      color: colorScheme.surfaceContainer.withOpacity(0.4),
+                      color: colorScheme.surfaceContainer.withValues(alpha: 0.4),
                       borderRadius: BorderRadius.circular(28),
                       border: Border.all(
-                        color: colorScheme.outlineVariant.withOpacity(0.2),
+                        color: colorScheme.outlineVariant.withValues(alpha: 0.2),
                       ),
                     ),
                     child: Row(
@@ -200,10 +200,10 @@ class _WealthAdvisorScreenState extends ConsumerState<WealthAdvisorScreen> {
                   child: Container(
                     padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
                     decoration: BoxDecoration(
-                      color: colorScheme.surfaceContainerHighest.withOpacity(0.5),
+                      color: colorScheme.surfaceContainerHighest.withValues(alpha: 0.5),
                       borderRadius: BorderRadius.circular(20),
                       border: Border.all(
-                        color: colorScheme.outlineVariant.withOpacity(0.1),
+                        color: colorScheme.outlineVariant.withValues(alpha: 0.1),
                       ),
                     ),
                     child: Column(
@@ -227,7 +227,7 @@ class _WealthAdvisorScreenState extends ConsumerState<WealthAdvisorScreen> {
                         Text(
                           health.explanation,
                           style: theme.textTheme.bodyLarge?.copyWith(
-                            color: Colors.white,
+                            color: colorScheme.onSurface,
                             height: 1.4,
                           ),
                         ),
@@ -265,13 +265,13 @@ class _WealthAdvisorScreenState extends ConsumerState<WealthAdvisorScreen> {
                         title: 'Monthly Spend',
                         value: '₹${snapshot.monthlySpend.toStringAsFixed(0)}',
                         icon: Icons.shopping_bag_outlined,
-                        color: Colors.white70,
+                        color: colorScheme.onSurface,
                       ),
                       _MetricCard(
                         title: 'Available Balance',
                         value: '₹${snapshot.totalBalance.toStringAsFixed(0)}',
                         icon: Icons.account_balance_wallet_outlined,
-                        color: Colors.white70,
+                        color: colorScheme.onSurface,
                       ),
                     ],
                   ),
@@ -289,7 +289,7 @@ class _WealthAdvisorScreenState extends ConsumerState<WealthAdvisorScreen> {
                         'Ask about your wealth',
                         style: theme.textTheme.titleMedium?.copyWith(
                           fontWeight: FontWeight.bold,
-                          color: Colors.white,
+                          color: colorScheme.onSurface,
                         ),
                       ),
                       const SizedBox(height: 12),
@@ -304,11 +304,11 @@ class _WealthAdvisorScreenState extends ConsumerState<WealthAdvisorScreen> {
                                 color: colorScheme.onSurface,
                               ),
                             ),
-                            backgroundColor: colorScheme.surfaceContainerHighest.withOpacity(0.3),
+                            backgroundColor: colorScheme.surfaceContainerHighest.withValues(alpha: 0.3),
                             shape: RoundedRectangleBorder(
                               borderRadius: BorderRadius.circular(16),
                               side: BorderSide(
-                                color: colorScheme.outlineVariant.withOpacity(0.1),
+                                color: colorScheme.outlineVariant.withValues(alpha: 0.1),
                               ),
                             ),
                             onPressed: () => _openChatWithQuery(prompt),
@@ -339,16 +339,16 @@ class _WealthAdvisorScreenState extends ConsumerState<WealthAdvisorScreen> {
               Expanded(
                 child: Container(
                   decoration: BoxDecoration(
-                    color: colorScheme.surfaceContainerHighest.withOpacity(0.4),
+                    color: colorScheme.surfaceContainerHighest.withValues(alpha: 0.4),
                     borderRadius: BorderRadius.circular(28),
                     border: Border.all(
-                      color: colorScheme.outlineVariant.withOpacity(0.2),
+                      color: colorScheme.outlineVariant.withValues(alpha: 0.2),
                     ),
                   ),
                   child: TextField(
                     controller: _queryController,
                     onSubmitted: _openChatWithQuery,
-                    style: const TextStyle(color: Colors.white),
+                    style: TextStyle(color: colorScheme.onSurface),
                     decoration: InputDecoration(
                       hintText: 'Ask your Wealth Advisor...',
                       hintStyle: TextStyle(color: colorScheme.onSurfaceVariant),
@@ -396,10 +396,10 @@ class _MetricCard extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: colorScheme.surfaceContainer.withOpacity(0.3),
+        color: colorScheme.surfaceContainer.withValues(alpha: 0.3),
         borderRadius: BorderRadius.circular(20),
         border: Border.all(
-          color: colorScheme.outlineVariant.withOpacity(0.1),
+          color: colorScheme.outlineVariant.withValues(alpha: 0.1),
         ),
       ),
       child: Column(
@@ -416,7 +416,7 @@ class _MetricCard extends StatelessWidget {
                   fontWeight: FontWeight.w500,
                 ),
               ),
-              Icon(icon, size: 16, color: color.withOpacity(0.8)),
+              Icon(icon, size: 16, color: color.withValues(alpha: 0.8)),
             ],
           ),
           Text(

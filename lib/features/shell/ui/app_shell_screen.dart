@@ -30,9 +30,9 @@ class _AppShellScreenState extends ConsumerState<AppShellScreen> {
   static const List<int> _mobileTabIndexes = <int>[0, 1, 2, 3, 4];
 
   late final List<Widget> _pages = const <Widget>[
-    WealthAdvisorScreen(),
     DashboardScreen(),
     CashFlowScreen(),
+    WealthAdvisorScreen(),
     SavingsScreen(),
     ProfileSettingsScreen(),
     AccountAggregatorScreen(),
@@ -43,9 +43,9 @@ class _AppShellScreenState extends ConsumerState<AppShellScreen> {
 
   late final List<NavigationDestination> _destinations =
       const <NavigationDestination>[
-        NavigationDestination(icon: Icon(Icons.auto_awesome), label: 'Advisor'),
         NavigationDestination(icon: Icon(Icons.space_dashboard), label: 'Dashboard'),
         NavigationDestination(icon: Icon(Icons.timeline), label: 'CashFlow'),
+        NavigationDestination(icon: Icon(Icons.auto_awesome), label: 'Advisor'),
         NavigationDestination(icon: Icon(Icons.savings), label: 'Goals'),
         NavigationDestination(icon: Icon(Icons.account_circle), label: 'Profile'),
         NavigationDestination(icon: Icon(Icons.account_balance), label: 'Accounts'),
@@ -151,9 +151,9 @@ class _AppShellScreenState extends ConsumerState<AppShellScreen> {
         child: Row(
           mainAxisAlignment: MainAxisAlignment.spaceEvenly,
           children: <Widget>[
-            buildNavItem(Icons.auto_awesome, 'Advisor', 0),
-            buildNavItem(Icons.space_dashboard, 'Dashboard', 1),
-            buildNavItem(Icons.timeline, 'CashFlow', 2),
+            buildNavItem(Icons.space_dashboard, 'Dashboard', 0),
+            buildNavItem(Icons.timeline, 'CashFlow', 1),
+            buildNavItem(Icons.auto_awesome, 'Advisor', 2),
             buildNavItem(Icons.savings, 'Goals', 3),
             buildNavItem(Icons.account_circle, 'Profile', 4),
           ],
@@ -167,7 +167,7 @@ class _AppShellScreenState extends ConsumerState<AppShellScreen> {
     final bool desktopLayout = MediaQuery.of(context).size.width >= 1000;
 
     return Scaffold(
-      appBar: _index == 0
+      appBar: _index == 2
           ? null
           : AppBar(
               leading: Builder(

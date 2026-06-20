@@ -22,9 +22,9 @@ class AppRoutes {
   static const String chatAssistant = '/assistant/chat';
 
   static const List<String> appTabs = <String>[
-    advisor,
     dashboard,
     cashFlow,
+    advisor,
     savings,
     profile,
     accounts,
@@ -46,7 +46,7 @@ final appRouterProvider = Provider<GoRouter>((ref) {
   ref.onDispose(refreshNotifier.dispose);
 
   return GoRouter(
-    initialLocation: AppRoutes.advisor,
+    initialLocation: AppRoutes.dashboard,
     refreshListenable: refreshNotifier,
     routes: <GoRoute>[
       GoRoute(
@@ -60,7 +60,7 @@ final appRouterProvider = Provider<GoRouter>((ref) {
         name: 'app-tab',
         builder: (BuildContext context, GoRouterState state) {
           final String location =
-              '/app/${state.pathParameters['tab'] ?? 'advisor'}';
+              '/app/${state.pathParameters['tab'] ?? 'dashboard'}';
           return AppShellScreen(
             initialIndex: AppRoutes.indexFromLocation(location),
           );
@@ -87,10 +87,10 @@ final appRouterProvider = Provider<GoRouter>((ref) {
         return AppRoutes.login;
       }
       if (loggedIn && isLoggingIn) {
-        return AppRoutes.advisor;
+        return AppRoutes.dashboard;
       }
       if (loggedIn && !inAppArea && !inAssistantArea && !isLoggingIn) {
-        return AppRoutes.advisor;
+        return AppRoutes.dashboard;
       }
       return null;
     },
