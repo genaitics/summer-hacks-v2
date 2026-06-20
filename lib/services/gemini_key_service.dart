@@ -46,8 +46,10 @@ class GeminiKeyService {
         // Check if we got a valid response structure
         return data != null && data['candidates'] != null;
       }
+      print('[GeminiKeyService] API Key verification failed. Status code: ${response.statusCode}, Body: ${response.body}');
       return false;
-    } catch (_) {
+    } catch (e, s) {
+      print('[GeminiKeyService] API Key verification encountered exception: $e\n$s');
       return false;
     }
   }
