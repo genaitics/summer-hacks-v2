@@ -258,6 +258,11 @@ class _WealthAdvisorScreenState extends ConsumerState<WealthAdvisorScreen> {
                     Row(
                       children: [
                         IconButton(
+                          tooltip: 'AI Capabilities Info',
+                          icon: Icon(Icons.info_outline, color: colorScheme.onSurfaceVariant),
+                          onPressed: () => _showAiCapabilitiesSheet(context),
+                        ),
+                        IconButton(
                           tooltip: 'Clear conversation',
                           icon: Icon(Icons.delete_outline, color: colorScheme.onSurfaceVariant),
                           onPressed: () {
@@ -392,6 +397,138 @@ class _WealthAdvisorScreenState extends ConsumerState<WealthAdvisorScreen> {
           ),
         ),
       ),
+    );
+  }
+
+  void _showAiCapabilitiesSheet(BuildContext context) {
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
+
+    showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      useSafeArea: true,
+      builder: (BuildContext context) {
+        return Container(
+          padding: const EdgeInsets.all(24),
+          child: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    Icon(Icons.auto_awesome, color: colorScheme.primary),
+                    const SizedBox(width: 8),
+                    Text(
+                      'FinMate AI Tools & Commands',
+                      style: theme.textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  'FinMate can analyze your context and execute tasks in-app when you ask.',
+                  style: theme.textTheme.bodyMedium?.copyWith(color: colorScheme.onSurfaceVariant),
+                ),
+                const SizedBox(height: 20),
+                
+                _capabilityItem(
+                  context,
+                  icon: Icons.receipt_long_rounded,
+                  title: 'Log Transactions',
+                  description: 'Add expenses or income to your accounts.',
+                  examples: const ['"Logged 300 for dinner"', '"Spent 150 on cab"', '"Received stipend 10000"'],
+                ),
+                const SizedBox(height: 16),
+                _capabilityItem(
+                  context,
+                  icon: Icons.savings_rounded,
+                  title: 'Manage Savings Goals',
+                  description: 'Create new savings goals or add deposits.',
+                  examples: const ['"Create goal iPad target 40000"', '"Deposit 2000 to Laptop goal"'],
+                ),
+                const SizedBox(height: 16),
+                _capabilityItem(
+                  context,
+                  icon: Icons.graphic_eq_rounded,
+                  title: 'Interactive Voice Mode',
+                  description: 'Have a real-time, hands-free voice chat with your avatar.',
+                  examples: const ['Tap the mic button at the bottom', 'Or tap the centered avatar directly'],
+                ),
+                const SizedBox(height: 16),
+                _capabilityItem(
+                  context,
+                  icon: Icons.analytics_rounded,
+                  title: 'Financial Coaching',
+                  description: 'Analyze weekly trends, calculate safe-to-spend, or identify overspending.',
+                  examples: const ['"Explain my budget"', '"Show my transaction summary"', '"Give me spending tips"'],
+                ),
+                const SizedBox(height: 24),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _capabilityItem(
+    BuildContext context, {
+    required IconData icon,
+    required String title,
+    required String description,
+    required List<String> examples,
+  }) {
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
+
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        CircleAvatar(
+          radius: 20,
+          backgroundColor: colorScheme.primaryContainer,
+          child: Icon(icon, color: colorScheme.onPrimaryContainer, size: 20),
+        ),
+        const SizedBox(width: 14),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                title,
+                style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold),
+              ),
+              Text(
+                description,
+                style: theme.textTheme.bodyMedium?.copyWith(color: colorScheme.onSurfaceVariant),
+              ),
+              const SizedBox(height: 6),
+              Wrap(
+                spacing: 6,
+                runSpacing: 6,
+                children: examples.map((ex) {
+                  return Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                    decoration: BoxDecoration(
+                      color: colorScheme.surfaceContainerHighest.withValues(alpha: 0.3),
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: Text(
+                      ex,
+                      style: theme.textTheme.labelSmall?.copyWith(
+                        fontStyle: FontStyle.italic,
+                        color: colorScheme.onSurface,
+                      ),
+                    ),
+                  );
+                }).toList(),
+              ),
+            ],
+          ),
+        ),
+      ],
     );
   }
 }

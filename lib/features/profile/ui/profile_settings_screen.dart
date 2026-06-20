@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 import 'package:student_fin_os/core/utils/currency_formatter.dart';
+import 'package:student_fin_os/core/utils/demo_seeder.dart';
 import 'package:student_fin_os/features/rewards/ui/rewards_screen.dart';
 import 'package:student_fin_os/models/finance_transaction.dart';
 import 'package:student_fin_os/models/gamification_models.dart';
@@ -9,7 +10,7 @@ import 'package:student_fin_os/providers/auth_providers.dart';
 import 'package:student_fin_os/providers/dashboard_providers.dart';
 import 'package:student_fin_os/providers/aws_providers.dart';
 import 'package:student_fin_os/providers/gamification_providers.dart';
-
+import 'package:student_fin_os/providers/split_providers.dart';
 import 'package:student_fin_os/core/widgets/gemini_key_manager_sheet.dart';
 
 class ProfileSettingsScreen extends ConsumerWidget {
@@ -42,6 +43,8 @@ class ProfileSettingsScreen extends ConsumerWidget {
           _spendingHabitsSection(context, habits),
           const SizedBox(height: 12),
           _geminiKeySettingsCard(context, ref),
+          const SizedBox(height: 12),
+          _quickFeedDemoDataCard(context, ref),
           const SizedBox(height: 12),
           Card(
             child: ListTile(
@@ -480,6 +483,166 @@ class ProfileSettingsScreen extends ConsumerWidget {
       activeSpendDays: activeDates.length,
       summary: summary,
       actionTip: actionTip,
+    );
+  }
+
+  Widget _quickFeedDemoDataCard(BuildContext context, WidgetRef ref) {
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
+
+    return Card(
+      child: ListTile(
+        leading: Icon(
+          Icons.data_exploration_rounded,
+          color: colorScheme.primary,
+        ),
+        title: const Text('Quick Feed Demo Data'),
+        subtitle: const Text('Populate app with 5 customized mock profiles for AI testing'),
+        trailing: const Icon(Icons.arrow_forward_ios, size: 16),
+        onTap: () {
+          _showDemoDataSelectionDialog(context, ref);
+        },
+      ),
+    );
+  }
+
+  void _showDemoDataSelectionDialog(BuildContext context, WidgetRef ref) {
+    final user = ref.read(authServiceProvider).currentUser;
+    final String userId = user?.uid ?? 'offline_user_id';
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
+
+    showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      useSafeArea: true,
+      builder: (BuildContext context) {
+        return Container(
+          padding: const EdgeInsets.all(24),
+          child: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Select Mock Demo Profile',
+                  style: theme.textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold),
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  'Seeding a mock profile will overwrite the local database, feeding full financial context to the AI assistant.',
+                  style: theme.textTheme.bodyMedium?.copyWith(color: colorScheme.onSurfaceVariant),
+                ),
+                const SizedBox(height: 20),
+                _demoProfileTile(
+                  context, ref, userId,
+                  title: 'Frugal Saver (Student Budget Hero)',
+                  description: 'High saving discipline, minimal travel/shopping. Laptop & semester goals.',
+                  type: DemoProfileType.frugalSaver,
+                ),
+                const SizedBox(height: 10),
+                _demoProfileTile(
+                  context, ref, userId,
+                  title: 'Impulsive Cafe-Goer (Swiggy Spender)',
+                  description: 'High dining out expenses (Swiggy, Zomato, Starbucks). Tight bank balance.',
+                  type: DemoProfileType.cafeSpender,
+                ),
+                const SizedBox(height: 10),
+                _demoProfileTile(
+                  context, ref, userId,
+                  title: 'Freelancing Hustler (High Cashflow)',
+                  description: 'Multiple project streams of income. High SIP savings and gadget goals.',
+                  type: DemoProfileType.freelanceHustler,
+                ),
+                const SizedBox(height: 10),
+                _demoProfileTile(
+                  context, ref, userId,
+                  title: 'Group Trip Planner (Heavy Splits)',
+                  description: 'Social travels (Airbnb, Uber splits). Active roommate & Goa splits.',
+                  type: DemoProfileType.tripPlanner,
+                ),
+                const SizedBox(height: 10),
+                _demoProfileTile(
+                  context, ref, userId,
+                  title: 'Debt-Burdened Learner (High Rent/EMIs)',
+                  description: 'Education courses, laptop loan EMI, hostel rent. Low remaining balance.',
+                  type: DemoProfileType.debtLearner,
+                ),
+                const SizedBox(height: 20),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _demoProfileTile(
+    BuildContext context,
+    WidgetRef ref,
+    String userId, {
+    required String title,
+    required String description,
+    required DemoProfileType type,
+  }) {
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
+
+    return InkWell(
+      onTap: () {
+        Navigator.pop(context); // Close sheet
+        DemoSeeder.seed(userId, type);
+        
+        // Refresh/invalidate all dashboard and aggregators streams
+        ref.invalidate(accountsProvider);
+        ref.invalidate(transactionsProvider);
+        ref.invalidate(savingsGoalsProvider);
+        ref.invalidate(splitGroupsProvider);
+        ref.invalidate(splitExpensesProvider);
+        ref.invalidate(dashboardSnapshotProvider);
+        ref.invalidate(aggregationSnapshotProvider);
+
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Successfully seeded "$title" dataset!'),
+            backgroundColor: Colors.green,
+          ),
+        );
+      },
+      child: Container(
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: colorScheme.surfaceContainerHighest.withValues(alpha: 0.3),
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(color: colorScheme.outlineVariant.withValues(alpha: 0.2)),
+        ),
+        child: Row(
+          children: [
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    title,
+                    style: theme.textTheme.titleMedium?.copyWith(
+                      fontWeight: FontWeight.bold,
+                      color: colorScheme.onSurface,
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    description,
+                    style: theme.textTheme.bodySmall?.copyWith(
+                      color: colorScheme.onSurfaceVariant,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            Icon(Icons.chevron_right, color: colorScheme.onSurfaceVariant),
+          ],
+        ),
+      ),
     );
   }
 }
