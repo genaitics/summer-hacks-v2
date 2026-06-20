@@ -30,9 +30,20 @@ class AiRuntimeConfig {
     defaultValue: 'false',
   );
 
+  static const String _defineApiKey = String.fromEnvironment(
+    'AI_API_KEY',
+    defaultValue: '',
+  );
+
   static String? userGeminiApiKey;
 
-  static String get apiKey => userGeminiApiKey ?? '';
+  static String get apiKey {
+    final String userKey = (userGeminiApiKey ?? '').trim();
+    if (userKey.isNotEmpty) {
+      return userKey;
+    }
+    return _readAny(<String>['AI_API_KEY', 'GEMINI_API_KEY'], _defineApiKey);
+  }
 
   static String get chatFastModel =>
       _readAny(<String>['AI_CHAT_FAST_MODEL', 'GEMINI_CHAT_FAST_MODEL'], _defineChatFastModel);
