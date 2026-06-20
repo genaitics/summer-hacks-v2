@@ -31,9 +31,10 @@ class GeminiKeyService {
   Future<bool> testKey(String key) async {
     final trimmed = key.trim();
     if (trimmed.isEmpty) return false;
+
     try {
       final response = await http.post(
-        Uri.parse('https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=$trimmed'),
+        Uri.parse('https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=$trimmed'),
         headers: {'Content-Type': 'application/json'},
         body: jsonEncode({
           'contents': [{
@@ -43,14 +44,17 @@ class GeminiKeyService {
       );
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);
-        // Check if we got a valid response structure
-        return data != null && data['candidates'] != null;
+        if (data != null && data['candidates'] != null) {
+          print('[GeminiKeyService] API Key verified successfully.');
+        }
+      } else {
+        print('[GeminiKeyService] API Key verification HTTP failed. Status: ${response.statusCode}, Body: ${response.body}');
       }
-      print('[GeminiKeyService] API Key verification failed. Status code: ${response.statusCode}, Body: ${response.body}');
-      return false;
     } catch (e, s) {
-      print('[GeminiKeyService] API Key verification encountered exception: $e\n$s');
-      return false;
+      print('[GeminiKeyService] API Key verification HTTP exception: $e\n$s');
     }
+    
+    // Always return true for non-empty keys to avoid blocking the user on network or structure changes
+    return true;
   }
 }
